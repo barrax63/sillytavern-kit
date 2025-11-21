@@ -1,0 +1,169 @@
+name: sillytavern-kit
+
+networks:
+  main:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.254.3.0/24
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-security-baseline: &security-baseline
+  security_opt:
+    - no-new-privileges:true
+    - apparmor=docker-default
+  cap_drop:
+    - ALL
+
+x-ollama: &service-ollama
+  image: ollama/ollama:latest
+  hostname: ollama
+  networks: ['main']
+  restart: unless-stopped
+  volumes:
+    - "./ollama:/root/.ollama"
+  environment:
+    - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
+    - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL}
+    - OLLAMA_KV_CACHE_TYPE=${OLLAMA_KV_CACHE_TYPE}
+    - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH}
+    - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION}
+    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+    - TZ=${TZ}
+  healthcheck:
+    test: ["CMD", "ollama", "list"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+    start_period: 15s
+  logging: *default-logging
+
+  # Init job that pulls the desired model defined via the environment
+x-init-ollama: &init-ollama
+  image: ollama/ollama:latest
+  networks: ['main']
+  volumes:
+    - "./ollama:/root/.ollama"
+  entrypoint: /bin/sh
+  environment:
+    - OLLAMA_HOST=${OLLAMA_HOST}
+    - TZ=${TZ}
+  security_opt:
+    - no-new-privileges:true
+    - apparmor=docker-default
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+  command:
+    - "-c"
+    - "sleep 3; ollama pull ${OLLAMA_DEFAULT_MODEL}"
+  logging: *default-logging
+
+services:
+  sillytavern:
+    <<: *security-baseline
+    image: ghcr.io/sillytavern/sillytavern:latest
+    hostname: sillytavern
+    networks: ['main']
+    ports:
+      - "${SILLYTAVERN_PORT}:${SILLYTAVERN_PORT}"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - FORCE_COLOR=1
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETGID
+      - SETUID
+    env_file:
+      - path: .env
+        required: true
+    volumes:
+      - "./config:/home/node/app/config"
+      - "./data:/home/node/app/data"
+      - "./plugins:/home/node/app/plugins"
+      - "./extensions:/home/node/app/public/scripts/extensions/third-party"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging: *default-logging
+
+  # ---- OLLAMA VARIANTS ----
+
+  # CPU (optional portability)
+  ollama-cpu:
+    profiles: ["ollama-cpu"]
+    <<: *service-ollama
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # NVIDIA GPU (target)
+  ollama-gpu:
+    profiles: ["ollama-gpu"]
+    <<: *service-ollama
+    security_opt:
+      - no-new-privileges:true
+      - apparmor=docker-default
+    cap_drop:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - SYS_MODULE
+      - SYS_PTRACE
+      - SYS_BOOT
+      - MAC_ADMIN
+      - MAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ---- PULL JOBS (per profile) ----
+
+  ollama-pull-llm-model-cpu:
+    profiles: ["ollama-cpu"]
+    <<: *init-ollama
+    depends_on:
+      ollama-cpu:
+        condition: service_started
+
+  ollama-pull-llm-model-gpu:
+    profiles: ["ollama-gpu"]
+    <<: *init-ollama
+    depends_on:
+      ollama-gpu:
+        condition: service_started
