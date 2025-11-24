@@ -1,5 +1,12 @@
 name: sillytavern-kit
 
+volumes:
+  st_config:
+  st_data:
+  st_plugins:
+  st_extensions:
+  ollama_storage:
+
 networks:
   main:
     driver: bridge
@@ -26,7 +33,7 @@ x-ollama: &service-ollama
   networks: ['main']
   restart: unless-stopped
   volumes:
-    - "./ollama:/root/.ollama"
+    - "ollama_storage:/root/.ollama"
   environment:
     - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
     - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL}
@@ -48,7 +55,7 @@ x-init-ollama: &init-ollama
   image: ollama/ollama:latest
   networks: ['main']
   volumes:
-    - "./ollama:/root/.ollama"
+    - "ollama_storage:/root/.ollama"
   entrypoint: /bin/sh
   environment:
     - OLLAMA_HOST=${OLLAMA_HOST}
@@ -86,10 +93,10 @@ services:
       - path: .env
         required: true
     volumes:
-      - "./config:/home/node/app/config"
-      - "/mnt/docker-encrypted-data/sillytavern:/home/node/app/data" # encrypted data storage
-      - "./plugins:/home/node/app/plugins"
-      - "./extensions:/home/node/app/public/scripts/extensions/third-party"
+      - "st_config:/home/node/app/config"
+      - "st_data:/home/node/app/data"
+      - "st_plugins:/home/node/app/plugins"
+      - "st_extensions:/home/node/app/public/scripts/extensions/third-party"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1:8000/ > /dev/null 2>&1 || exit 1"] # change to HTTP if you don't use SSL
       interval: 30s
