@@ -67,6 +67,10 @@ The following folders will be created on first run:
 - `./extensions` – Third-party SillyTavern extensions
 - `./ollama` – Ollama models and configuration
 
+> [!IMPORTANT]
+> The `./data` folder will be created using an encrypted mountpoint to preserve user data privacy.
+> You have to create this mountpoint by yourself or changing the volume back to local storage.
+
 ---
 
 #### 2. Start with CPU-only Ollama (default / portable)
