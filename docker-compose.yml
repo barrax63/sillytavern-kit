@@ -87,7 +87,7 @@ services:
         required: true
     volumes:
       - "./config:/home/node/app/config"
-      - "./data:/home/node/app/data"
+      - "/mnt/docker-encrypted-data/sillytavern:/home/node/app/data" # encrypted data storage
       - "./plugins:/home/node/app/plugins"
       - "./extensions:/home/node/app/public/scripts/extensions/third-party"
     healthcheck:
