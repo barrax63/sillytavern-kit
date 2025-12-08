@@ -189,7 +189,7 @@ Add an entry similar to:
 
 ```bash
 # Every Sunday at 02:30 run git pull and compose up with latest images (CPU profile)
-30 2 * * 0 cd /home/docker/sillytavern-kit && /usr/bin/git pull && /usr/bin/docker compose build --no-cache && /usr/bin/docker compose up -d >> /home/docker/logs/sillytavern-kit-update.log 2>&1
+30 2 * * 0 cd /home/docker/sillytavern-kit && /usr/bin/git pull && /usr/bin/docker compose up -d --pull always >> /home/docker/logs/sillytavern-kit-update.log 2>&1
 ```
 
 Adjust the profile (`ollama-cpu` vs `ollama-gpu`) and schedule as needed.

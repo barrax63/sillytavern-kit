@@ -34,14 +34,9 @@ x-ollama: &service-ollama
   restart: unless-stopped
   volumes:
     - "ollama_storage:/root/.ollama"
-  environment:
-    - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
-    - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL}
-    - OLLAMA_KV_CACHE_TYPE=${OLLAMA_KV_CACHE_TYPE}
-    - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH}
-    - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION}
-    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
-    - TZ=${TZ}
+  env_file:
+    - path: .env
+      required: true
   healthcheck:
     test: ["CMD", "ollama", "list"]
     interval: 10s
@@ -81,6 +76,9 @@ services:
     ports:
       - "${SILLYTAVERN_PORT}:${SILLYTAVERN_PORT}"
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
     environment:
       - NODE_ENV=production
       - FORCE_COLOR=1
@@ -89,9 +87,6 @@ services:
       - FOWNER
       - SETGID
       - SETUID
-    env_file:
-      - path: .env
-        required: true
     volumes:
       - "st_config:/home/node/app/config"
       - "st_data:/home/node/app/data"
